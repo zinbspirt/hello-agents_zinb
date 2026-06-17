@@ -42,7 +42,8 @@ class Planner:
         print(f"✅ 计划已生成:\n{response_text}")
         
         try:
-            plan_str = response_text.split("```python")[1].split("```")[0].strip()
+            match = re.search(r'```(?:python|py)?\s*\n?([\s\S]*?)```', response_text)
+            plan_str = match.group(1).strip() if match else response_text.strip()
             plan = ast.literal_eval(plan_str)
             return plan if isinstance(plan, list) else []
         except (ValueError, SyntaxError, IndexError) as e:

@@ -84,10 +84,12 @@ class BaseTool:
         parameters = {}
         
         if self.args_schema:
+            # 兼容 Pydantic v2: 使用 model_fields 替代 __fields__
+            model_fields = self.args_schema.model_fields
             # 从 Pydantic 模型提取参数信息
-            for field_name, field_info in self.args_schema.__fields__.items():
-                param_type = field_info.type_
-                param_desc = field_info.field_info.description or ""
+            for field_name, field_info in model_fields.items():
+                param_type = field_info.annotation
+                param_desc = field_info.description or ""
                 
                 # 转换类型为 JSON schema 类型
                 json_type = "string"
@@ -109,8 +111,8 @@ class BaseTool:
             
             # 确定必需参数
             required = [
-                field_name for field_name, field_info in self.args_schema.__fields__.items()
-                if field_info.required
+                field_name for field_name, field_info in model_fields.items()
+                if field_info.is_required()
             ]
         else:
             parameters = {"type": "object", "properties": {}}
@@ -204,23 +206,85 @@ class SearchTool(BaseTool):
 
 
 # ------------------------------
+# 计算器工具
+# ------------------------------
+
+class CalculatorToolInput(BaseToolInput):
+    """计算器工具的输入参数模型"""
+    expression: str = Field(description="数学表达式，支持 +, -, *, /, //, %, **, () 等运算。例如: '(123 + 456) * 789 / 12'")
+
+
+class CalculatorTool(BaseTool):
+    """
+    数学计算器工具。
+    
+    用于执行数学运算，支持加减乘除、幂运算、取余、括号等。
+    当需要计算复杂数学表达式的结果时，应使用此工具。
+    """
+    name: str = "calculator"
+    description: str = "数学计算器。当你需要计算数学表达式的结果时使用此工具。支持 +, -, *, /, //, %, ** 和括号。"
+    args_schema: Type[BaseModel] = CalculatorToolInput
+    
+    def _run(self, expression: str) -> str:
+        """
+        安全地计算数学表达式。
+        """
+        print(f"🧮 正在计算: {expression}")
+        
+        # 允许的字符白名单
+        import re as _re
+        allowed_pattern = r'^[0-9+\-*/().%\s\*\*eE]+$'
+        
+        # 清理表达式：替换中文符号和常见别名
+        cleaned = expression.strip()
+        cleaned = cleaned.replace('×', '*').replace('÷', '/')
+        cleaned = cleaned.replace('（', '(').replace('）', ')')
+        cleaned = cleaned.replace('^', '**')
+        
+        if not _re.match(allowed_pattern, cleaned):
+            return f"错误：表达式包含不允许的字符。仅支持数字和运算符 (+, -, *, /, //, %, **, ())，收到: {expression}"
+        
+        try:
+            # 使用 compile + eval 限制只能访问数学运算
+            code = compile(cleaned, '<calculator>', 'eval')
+            # 禁止访问任何内置函数和变量
+            result = eval(code, {"__builtins__": {}}, {})
+            return str(result)
+        except ZeroDivisionError:
+            return "错误：除以零"
+        except SyntaxError:
+            return f"错误：表达式语法不正确: {expression}"
+        except Exception as e:
+            return f"计算错误: {e}"
+
+
+# ------------------------------
 # 工具执行器（ToolExecutor）
 # ------------------------------
 
 class ToolExecutor:
     """
     工具执行器，负责管理和调用工具。
+    支持工具分类和关键词检索，适用于工具数量较多的场景。
     """
     
     def __init__(self):
         self.tools: Dict[str, BaseTool] = {}
+        self.tool_categories: Dict[str, str] = {}  # tool_name -> category
     
-    def register_tool(self, tool: BaseTool) -> None:
+    def register_tool(self, tool: BaseTool, category: str = "通用") -> None:
         """
         注册一个工具实例。
+        
+        Args:
+            tool: 工具实例
+            category: 工具分类（如 "搜索", "计算", "文件" 等）
         """
+        if tool.name in self.tools:
+            raise ValueError(f"工具 '{tool.name}' 已存在")
         self.tools[tool.name] = tool
-        print(f"工具已注册: {tool.name}")
+        self.tool_categories[tool.name] = category
+        print(f"工具已注册: {tool.name} [{category}]")
     
     def register_function(self, func: Callable, name: Optional[str] = None, 
                           description: Optional[str] = None) -> None:
@@ -296,6 +360,51 @@ class ToolExecutor:
         获取所有工具的结构化信息列表。
         """
         return [tool.get_tool_info() for tool in self.tools.values()]
+    
+    def get_tools_by_category(self, category: str) -> List[Dict[str, Any]]:
+        """
+        获取指定分类下的所有工具信息。
+        """
+        return [
+            tool.get_tool_info() 
+            for name, tool in self.tools.items() 
+            if self.tool_categories.get(name) == category
+        ]
+    
+    def list_categories(self) -> Dict[str, List[str]]:
+        """
+        获取所有分类及其包含的工具名称。
+        返回: {"分类名": ["工具名1", "工具名2", ...]}
+        """
+        categories: Dict[str, List[str]] = {}
+        for tool_name, category in self.tool_categories.items():
+            categories.setdefault(category, []).append(tool_name)
+        return categories
+    
+    def search_tools(self, keyword: str) -> List[Dict[str, Any]]:
+        """
+        根据关键词搜索工具（匹配工具名或描述）。
+        """
+        keyword_lower = keyword.lower()
+        results = []
+        for name, tool in self.tools.items():
+            if keyword_lower in name.lower() or keyword_lower in tool.description.lower():
+                results.append(tool.get_tool_info())
+        return results
+    
+    def get_tools_summary(self) -> str:
+        """
+        获取工具的分类摘要，适用于工具数量较多时嵌入提示词。
+        比完整 JSON Schema 更紧凑。
+        """
+        categories = self.list_categories()
+        lines = []
+        for category, tool_names in categories.items():
+            lines.append(f"[{category}]")
+            for name in tool_names:
+                tool = self.tools[name]
+                lines.append(f"  - {name}: {tool.description}")
+        return "\n".join(lines)
     
     def execute(self, tool_name: str, **kwargs) -> Any:
         """

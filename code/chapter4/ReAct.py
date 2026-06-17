@@ -1,26 +1,30 @@
 import re
 from llm_client import HelloAgentsLLM
-from tools import ToolExecutor, search
+from tools import ToolExecutor, SearchTool, CalculatorTool
+import json
+
 
 # (此处省略 REACT_PROMPT_TEMPLATE 的定义)
 REACT_PROMPT_TEMPLATE = """
-请注意，你是一个有能力调用外部工具的智能助手。
+你是一个可以调用工具的智能助手。
 
-可用工具如下：
+可用工具：
 {tools}
 
-请严格按照以下格式进行回应：
+你需要通过多步思考与行动来解决用户问题。
+每一步你都必须严格按照以下格式输出，只能包含一个 Thought 和一个 Action：
 
-Thought: 你的思考过程，用于分析问题、拆解任务和规划下一步行动。
-Action: 你决定采取的行动，必须是以下格式之一：
-- `{{tool_name}}[{{tool_input}}]`：调用一个可用工具。
-- `Finish[最终答案]`：当你认为已经获得最终答案时。
-- 当你收集到足够的信息，能够回答用户的最终问题时，你必须在`Action:`字段后使用 `Finish[最终答案]` 来输出最终答案。
+Thought: 你的思考过程，分析当前情况并决定下一步。
+Action: 你要执行的操作，必须是以下二者之一：
+- 调用工具：输出一个JSON对象，格式为 {{"tool": "工具名", "params": {{"参数名": "值"}}}}
+- 结束任务：{{"tool": "Finish", "params": {{"answer": "最终答案"}}}}
 
+之后你会收到一个 Observation，里面是工具返回的结果。请基于它继续下一轮思考，直到得出最终答案。
+{failure_hint}
+当前对话历史：
+{history}
 
-现在，请开始解决以下问题：
-Question: {question}
-History: {history}
+用户问题：{question}
 """
 
 class ReActAgent:
@@ -29,71 +33,130 @@ class ReActAgent:
         self.tool_executor = tool_executor
         self.max_steps = max_steps
         self.history = []
+        self.consecutive_failures = 0  # 连续失败计数
+        self.max_consecutive_failures = 3  # 超过此阈值时触发引导
+
+    def _build_failure_hint(self) -> str:
+        """根据连续失败次数生成引导提示。"""
+        if self.consecutive_failures < self.max_consecutive_failures:
+            return ""
+        
+        # 失败次数超过阈值，提供强引导
+        tools_summary = self.tool_executor.get_tools_summary()
+        hint = (
+            f"\n\u26a0\ufe0f 注意：你已经连续 {self.consecutive_failures} 次工具调用失败。"
+            f"请仔细检查以下可用工具列表，确保使用正确的工具名和参数格式：\n"
+            f"{tools_summary}\n"
+            f"请重新审视你的策略，选择一个合适的工具，或者如果你已有足够信息，请使用 Finish 输出答案。\n"
+        )
+        return hint
 
     def run(self, question: str):
         self.history = []
-        current_step = 0
-
-        while current_step < self.max_steps:
-            current_step += 1
-            print(f"\n--- 第 {current_step} 步 ---")
-
-            tools_desc = self.tool_executor.getAvailableTools()
-            history_str = "\n".join(self.history)
-            prompt = REACT_PROMPT_TEMPLATE.format(tools=tools_desc, question=question, history=history_str)
-
-            messages = [{"role": "user", "content": prompt}]
-            response_text = self.llm_client.think(messages=messages)
-            if not response_text:
-                print("错误：LLM未能返回有效响应。"); break
-
-            thought, action = self._parse_output(response_text)
-            if thought: print(f"🤔 思考: {thought}")
-            if not action: print("警告：未能解析出有效的Action，流程终止。"); break
+        self.consecutive_failures = 0
+        cur_step = 0
+        
+        while cur_step < self.max_steps:
+            cur_step += 1
+            print(f"\n————第{cur_step}步————")
             
-            if action.startswith("Finish"):
-                # 如果是Finish指令，提取最终答案并结束
-                final_answer = self._parse_action_input(action)
-                print(f"🎉 最终答案: {final_answer}")
-                return final_answer
+            tools_desc = json.dumps(self.tool_executor.get_all_tools_info(), ensure_ascii=False, indent=2)
+            history = "\n".join(self.history)
+            failure_hint = self._build_failure_hint()
+            
+            #格式化提示词
+            prompt = REACT_PROMPT_TEMPLATE.format(
+                tools=tools_desc,
+                question=question,
+                history=history,
+                failure_hint=failure_hint
+            )
+            
+            message = {"role": "user", "content": prompt}
+            response = self.llm_client.think(messages=[message])
+            if not response:
+                print("错误：LLM未能返回有效响应。")
+                break
+            
+            thought, action = self._parse_output(response)
+            self.history.append(f"Thought: {thought or '(无)'}")
+            if not action:
+                print("错误：LLM未返回有效动作。")
+                self.history.append("Observation: 未按照要求返回Action，请严格按照格式输出。")
+                self.consecutive_failures += 1
+                continue
             
             tool_name, tool_input = self._parse_action(action)
-            if not tool_name or not tool_input:
-                self.history.append("Observation: 无效的Action格式，请检查。"); continue
+            if not tool_name:
+                self.history.append(f"Action: {action}")
+                self.history.append("Observation: 无效的Action JSON格式，请检查。")
+                self.consecutive_failures += 1
+                continue
 
-            print(f"🎬 行动: {tool_name}[{tool_input}]")
-            tool_function = self.tool_executor.getTool(tool_name)
-            observation = tool_function(tool_input) if tool_function else f"错误：未找到名为 '{tool_name}' 的工具。"
-            
-            print(f"👀 观察: {observation}")
+            if tool_name == "Finish":
+                final_answer = tool_input.get("answer", "") if isinstance(tool_input, dict) else str(tool_input)
+                print(f"\n\u2705 Finish: {final_answer}")
+                return final_answer
+
+            # 检查工具是否存在
+            if not self.tool_executor.get_tool(tool_name):
+                available = self.tool_executor.list_tools()
+                error_msg = f"工具 '{tool_name}' 不存在。可用工具: {', '.join(available)}"
+                print(f"\u274c {error_msg}")
+                self.history.append(f"Action: {action}")
+                self.history.append(f"Observation: {error_msg}")
+                self.consecutive_failures += 1
+                continue
+
+            print(f"\U0001f527 Action: {tool_name}, 参数: {tool_input}")
+            try:
+                tool_output = self.tool_executor.execute(tool_name, **tool_input)
+                self.consecutive_failures = 0  # 成功执行，重置失败计数
+            except Exception as e:
+                tool_output = f"工具执行出错: {e}"
+                self.consecutive_failures += 1
+
+            print(f"\U0001f4cb Observation: {tool_output}")
             self.history.append(f"Action: {action}")
-            self.history.append(f"Observation: {observation}")
-
-        print("已达到最大步数，流程终止。")
+            self.history.append(f"Observation: {tool_output}")
+        
+        print("\n\u26a0\ufe0f 已达到最大步数限制，未能得出最终答案。")
         return None
+            
+    def _parse_output(self, response: str):
+        thought = re.search(r"\s*Thought:\s*(.*?)(?=Action:|$)", response, re.DOTALL)
+        action = re.search(r"\s*Action:\s*(.*?)$", response, re.DOTALL)
+        thought = thought.group(1).strip() if thought else None
+        action = action.group(1).strip() if action else None
 
-    def _parse_output(self, text: str):
-        # Thought: 匹配到 Action: 或文本末尾
-        thought_match = re.search(r"Thought:\s*(.*?)(?=\nAction:|$)", text, re.DOTALL)
-        # Action: 匹配到文本末尾
-        action_match = re.search(r"Action:\s*(.*?)$", text, re.DOTALL)
-        thought = thought_match.group(1).strip() if thought_match else None
-        action = action_match.group(1).strip() if action_match else None
+        # 兜底：如果没有 Action: 前缀，尝试从原始响应中提取 JSON
+        if not action:
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                try:
+                    data = json.loads(json_match.group(0))
+                    if "tool" in data:
+                        action = json_match.group(0).strip()
+                except json.JSONDecodeError:
+                    pass
+
         return thought, action
-
-    def _parse_action(self, action_text: str):
-        match = re.match(r"(\w+)\[(.*)\]", action_text, re.DOTALL)
-        return (match.group(1), match.group(2)) if match else (None, None)
-
-    def _parse_action_input(self, action_text: str):
-        match = re.match(r"\w+\[(.*)\]", action_text, re.DOTALL)
-        return match.group(1) if match else ""
-
+    
+    def _parse_action(self, action_text):
+        json_match = re.search(r"\s*(\{.*\})", action_text, re.DOTALL)
+        if json_match:
+            try:
+                data = json.loads(json_match.group(1))
+                return data["tool"], data["params"]
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return None, None
+        
 if __name__ == '__main__':
     llm = HelloAgentsLLM()
     tool_executor = ToolExecutor()
-    search_desc = "一个网页搜索引擎。当你需要回答关于时事、事实以及在你的知识库中找不到的信息时，应使用此工具。"
-    tool_executor.registerTool("Search", search_desc, search)
+    tool_executor.register_tool(SearchTool(), category="搜索")
+    tool_executor.register_tool(CalculatorTool(), category="计算")
     agent = ReActAgent(llm_client=llm, tool_executor=tool_executor)
-    question = "华为最新的手机是哪一款？它的主要卖点是什么？"
+    question = "计算 (123 + 456) × 789 / 12 的结果"
     agent.run(question)
