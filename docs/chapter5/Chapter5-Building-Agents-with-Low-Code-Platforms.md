@@ -709,49 +709,49 @@ FastGPT is an open-source, LLM-based knowledge base Q&A platform and Agent build
 When you visit the FastGPT official website, the first thing you see is its concise and powerful product manifesto — "Enterprise-grade AI Productivity Engine," emphasizing the construction of secure, controllable enterprise-grade AI Agents, as shown in Figure 5.38.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-01.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-01.png" alt="Image description" width="90%"/>
   <p>Figure 5.38 FastGPT Official Website Homepage</p>
 </div>
 
 After logging into the platform, you can see its clear workspace layout. The left navigation bar divides core functions into four modules: Dialog Portal, Workspace, Knowledge Base, and Account. Among them, the Agent module is further divided into three types: Workflow, Dialog Agent, and Dialog Agent V2 (Beta), making it convenient for users to choose the appropriate construction mode based on their business scenarios. The main area provides a quick entry point for "Create from Template," with built-in official templates such as Sales Training Master, Document Translation Assistant, and Industry Trend Insight Briefing; below is the user's own Agent list, as shown in Figure 5.39.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-02.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-02.png" alt="Image description" width="90%"/>
   <p>Figure 5.39 FastGPT Platform Main Interface</p>
 </div>
 
 In terms of account and plan options, FastGPT provides a free version for individual developers to try. The free version includes 100 credits, 600 knowledge base indexes, 1 team member, 10 Agents, 3 knowledge bases, 30-day conversation record retention, 30 QPM call rate, and the ability to upload 5 files of 50MB each at a time, as shown in Figure 5.40. For small and medium-sized enterprises and teams, the platform also provides paid upgrade plans to meet higher concurrency and storage needs.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-03.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-03.png" alt="Image description" width="90%"/>
   <p>Figure 5.40 FastGPT Free Plan and Usage</p>
 </div>
 
 FastGPT's core competitiveness lies in its powerful knowledge base capabilities. The platform supports importing multiple file formats, including common document types such as Word, Markdown, and PDF. As shown in Figure 5.41, in the "test General Knowledge Base," we can upload multiple files such as Introduction to Deep Learning, Getting Started with Machine Learning, and Bidding Document Text. The system automatically chunks and indexes the files, and once the status shows "Ready," they can be retrieved and referenced in conversations.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-12.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-12.png" alt="Image description" width="90%"/>
   <p>Figure 5.41 FastGPT Knowledge Base File Management</p>
 </div>
 
 At the file processing level, FastGPT provides fine-grained parameter configuration. As shown in Figure 5.42, users can choose between "Chunk Storage" or "Q&A Pair Extraction" processing methods, set chunking conditions (such as triggering chunking when original text length exceeds 1000 characters), and enable various index enhancement options, including adding titles to indexes, automatically generating supplementary indexes, and automatic image indexing. For documents with extensive mixed text and image content (such as textbooks and research reports), the automatic image indexing feature is particularly important, as it allows the large model to understand and reference visual information in documents when answering.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-14.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-14.png" alt="Image description" width="90%"/>
   <p>Figure 5.42 Knowledge Base Data Processing Parameter Settings</p>
 </div>
 
 After uploading, users can view the specific content of file chunks. As shown in Figure 5.43, taking "English Grade 4 Lower Semester Full Electronic Book.pdf" as an example, the platform displays the text preview of each chunk, while the right metadata panel shows key information such as file size (62MB), original text length (37,797 characters), processing mode (chunk storage), and image indexing status. This transparent chunk display facilitates developers in debugging and optimizing the knowledge base.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-13.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-13.png" alt="Image description" width="90%"/>
   <p>Figure 5.43 Knowledge Base File Chunk Details and Metadata</p>
 </div>
 
 In addition to the knowledge base, FastGPT also keeps up with ecosystem trends in tool integration. The platform natively supports MCP (Model Context Protocol) tools, and users can uniformly manage various MCP services in the "My Tools" module. As shown in Figure 5.44, under the "ai Finance" folder, we have configured multiple MCP tools including Chinese Trend Aggregation, Real-time Stock MCP, QieMan Fund MCP, Minimax-MCP, and BI Chart Tool. These tools will empower the agent with the ability to call external real-time data and professional services.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-04.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-04.png" alt="Image description" width="90%"/>
   <p>Figure 5.44 FastGPT MCP Tool Management</p>
 </div>
 
@@ -771,14 +771,14 @@ This case requires the following two types of MCP services:
 As shown in Figure 5.45, we can find the "Visual Chart MCP Server" in the MCP marketplace of the ModelScope community. This service is developed based on TypeScript, compatible with the MCP protocol, and provides capabilities for generating area charts, bar charts, pie charts, and various other charts, transforming dry data into intuitive visual results.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-05.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-05.png" alt="Image description" width="90%"/>
   <p>Figure 5.45 ModelScope Community Visual Chart MCP Server</p>
 </div>
 
 Additionally, as shown in Figure 5.46, the Alibaba Cloud Bailian platform also provides rich official MCP services. In the MCP management page, we can find financial MCP services such as "Today's Investment - Financial..." and "QieMan," as well as tools like real-time stock quote query and Wanxiang - Video Generation. After adding these services to FastGPT's MCP tool library, the agent can call them on demand during conversations.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-06.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-06.png" alt="Image description" width="90%"/>
   <p>Figure 5.46 Alibaba Cloud Bailian MCP Management</p>
 </div>
 
@@ -791,7 +791,7 @@ After completing tool configuration, enter the core workflow orchestration phase
 As shown in Figure 5.47, the complete workflow of the "Smart Investment Advisor Assistant" includes multiple processing branches: user intent recognition, knowledge base retrieval, risk questionnaire collection, MCP tool invocation, and report generation. The entire workflow presents a clear modular structure with data flowing orderly between different nodes. This visual orchestration approach allows developers to intuitively understand and debug the agent's decision paths.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-07.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-07.png" alt="Image description" width="90%"/>
   <p>Figure 5.47 Smart Investment Advisor Assistant Workflow Orchestration</p>
 </div>
 
@@ -840,7 +840,7 @@ At the same time, we need to configure a financial knowledge base for the assist
 After completing the workflow and prompt configuration, we can test in FastGPT's dialogue interface. As shown in Figure 5.48, the smart investment advisor assistant's opening message clearly introduces its three main features: mastery of financial investment theory, real-time market news and data, and asset allocation recommendations based on risk profile assessment. The interface also provides quick action buttons for users to trigger common tasks with one click.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-08.png" alt="Image description" width="50%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-08.png" alt="Image description" width="50%"/>
   <p>Figure 5.48 Smart Investment Advisor Assistant Dialogue Interface</p>
 </div>
 
@@ -854,21 +854,21 @@ As shown in Figure 5.49, the report contains the following core modules:
 - **Rebalancing Strategy**: Provides recommendations for periodic portfolio rebalancing, including rebalancing cycle and trigger conditions.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-09.png" alt="Image description" width="90%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-09.png" alt="Image description" width="90%"/>
   <p>Figure 5.49 Investment Strategy Analysis Report</p>
 </div>
 
 For real-time data query scenarios, as shown in Figure 5.50, when the user asks "Query the current stock price information of Kweichow Moutai," the agent automatically calls the MCP tool (`get_stock_quote_realtime`) to obtain real-time market data. The returned results include title, data source, key highlights (opening price, highest price, intraday price range, trading volume, total market capitalization, circulating market capitalization, etc.), as well as potential impact analysis and suggested actions. This structured, professional output reflects the practical value of Agent tool invocation capabilities.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-10.png" alt="Image description" width="50%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-10.png" alt="Image description" width="50%"/>
   <p>Figure 5.50 Real-time Stock Quote Query</p>
 </div>
 
 In terms of concept explanation, as shown in Figure 5.51, when the user asks "What's the difference between P/E ratio and P/B ratio," the assistant provides a systematic comparative analysis based on knowledge base and large model understanding: starting from definitions, it explains the calculation methods of P/E Ratio and P/B Ratio in detail; compares them from four dimensions (calculation basis, applicable industries, information reflected, limitations); and finally provides practical application advice on when to focus on P/E ratio versus P/B ratio. This well-structured, logically rigorous output is a typical advantage of RAG-enhanced large models in vertical domain Q&A.
 
 <div align="center">
-  <img src="../images/5-figures/fastgpt-11.png" alt="Image description" width="50%"/>
+  <img src="https://raw.githubusercontent.com/datawhalechina/Hello-Agents/main/docs/images/5-figures/fastgpt-11.png" alt="Image description" width="50%"/>
   <p>Figure 5.51 P/E Ratio and P/B Ratio Concept Analysis</p>
 </div>
 
